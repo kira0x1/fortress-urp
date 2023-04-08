@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1426575000, guid: afbf832bc46149f5a291e87cab63e46d, type: 3}
+  m_Script: {fileID: 0}
   m_Name: GlobalValidationConfig
   m_EditorClassIdentifier: 
   ValidateScenesOnSceneLoad:
@@ -55,14 +55,14 @@ MonoBehaviour:
     serializedValue: 0
     changedFromDefault: 0
   ShowWidget:
-    serializedValue: 1
-    changedFromDefault: 1
+    serializedValue: 0
+    changedFromDefault: 0
   DebugMode:
     serializedValue: 0
     changedFromDefault: 0
   ShowWidgetOnlyWhenErrorOrWarnings:
-    serializedValue: 1
-    changedFromDefault: 1
+    serializedValue: 0
+    changedFromDefault: 0
   EnableLeakDetection:
     serializedValue: 0
     changedFromDefault: 0
@@ -80,5 +80,5 @@ MonoBehaviour:
     changedFromDefault: 0
   KeepMainValidationSessionAliveInBackground:
     serializedValue: 0
-    changedFromDefault: 1
-  HasShownValidationConfig: 1
+    changedFromDefault: 0
+  HasShownValidationConfig: 0
