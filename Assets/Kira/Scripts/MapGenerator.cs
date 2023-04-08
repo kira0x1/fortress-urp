@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kira
@@ -8,16 +10,21 @@ namespace Kira
         public enum DrawMode
         {
             NoiseMap,
-            ColorMap
+            ColorMap,
+            Mesh
         }
 
         public DrawMode drawMode;
 
-        public int mapWidth = 100;
-        public int mapHeight = 100;
-        public float noiseScale = 28;
+        public Noise.NormalizeMode normalizeMode;
 
+        public const int mapChunkSize = 241;
+
+        [Range(0, 6)]
+        public int editorLevelOfDetail;
+        public float noiseScale = 28;
         public int octaves = 4;
+
         [Range(0, 1)]
         public float persistance = 0.5f;
         public float lacunarity = 2f;
@@ -25,49 +32,137 @@ namespace Kira
         public int seed;
         public Vector2 offset;
 
+        public float meshHeightMultiplier = 10f;
+        public AnimationCurve meshHeightCurve;
+
         public bool autoUpdate = true;
 
         public TerrainType[] regions;
 
-        public void GenerateMap()
-        {
-            float[,] noiseMap = Noise.GenerateNoiseMap(mapWidth, mapHeight, seed, noiseScale, octaves, persistance, lacunarity, offset);
+        private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
+        private Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
-            Color[] colorMap = new Color[mapWidth * mapHeight];
-            for (int y = 0; y < mapHeight; y++)
+        public void DrawMapInEditor()
+        {
+            MapData mapData = GenerateMapData(Vector2.zero);
+
+            MapDisplay display = FindObjectOfType<MapDisplay>();
+
+            if (drawMode == DrawMode.NoiseMap)
             {
-                for (int x = 0; x < mapWidth; x++)
+                display.DrawTexture(TextureGenerator.TextureFromHeightMap(mapData.heightMap));
+            }
+            else if (drawMode == DrawMode.ColorMap)
+            {
+                display.DrawTexture(TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize));
+            }
+            else if (drawMode == DrawMode.Mesh)
+            {
+                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail), TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize));
+            }
+        }
+
+        public void RequestMapData(Vector2 center, Action<MapData> callback)
+        {
+            void ThreadStart()
+            {
+                MapDataThread(center, callback);
+            }
+
+            new Thread(ThreadStart).Start();
+        }
+
+        public void RequestMeshData(MapData mapData, int lod, Action<MeshData> callback)
+        {
+            void ThreadStart()
+            {
+                MeshDataThread(mapData, lod, callback);
+            }
+
+            new Thread(ThreadStart).Start();
+        }
+
+        private void MeshDataThread(MapData mapData, int lod, Action<MeshData> callback)
+        {
+            MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, lod);
+
+            lock (meshDataThreadInfoQueue)
+            {
+                meshDataThreadInfoQueue.Enqueue(new MapThreadInfo<MeshData>(callback, meshData));
+            }
+        }
+
+        private void MapDataThread(Vector2 center, Action<MapData> callback)
+        {
+            MapData mapData = GenerateMapData(center);
+
+            lock (mapDataThreadInfoQueue)
+            {
+                mapDataThreadInfoQueue.Enqueue(new MapThreadInfo<MapData>(callback, mapData));
+            }
+        }
+
+        private void Update()
+        {
+            if (mapDataThreadInfoQueue.Count > 0)
+            {
+                for (int i = 0; i < mapDataThreadInfoQueue.Count; i++)
+                {
+                    MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
+                    threadInfo.callback(threadInfo.paramater);
+                }
+            }
+
+            if (meshDataThreadInfoQueue.Count > 0)
+            {
+                for (int i = 0; i < meshDataThreadInfoQueue.Count; i++)
+                {
+                    MapThreadInfo<MeshData> threadInfo = meshDataThreadInfoQueue.Dequeue();
+                    threadInfo.callback(threadInfo.paramater);
+                }
+            }
+        }
+
+        private MapData GenerateMapData(Vector2 center)
+        {
+            float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize, mapChunkSize, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+
+            Color[] colorMap = new Color[mapChunkSize * mapChunkSize];
+            for (int y = 0; y < mapChunkSize; y++)
+            {
+                for (int x = 0; x < mapChunkSize; x++)
                 {
                     float currentHeight = noiseMap[x, y];
                     for (int i = 0; i < regions.Length; i++)
                     {
                         if (currentHeight <= regions[i].height)
                         {
-                            colorMap[y * mapWidth + x] = regions[i].color;
+                            colorMap[y * mapChunkSize + x] = regions[i].color;
                             break;
                         }
                     }
                 }
             }
 
-            MapDisplay display = FindObjectOfType<MapDisplay>();
-
-            if (drawMode == DrawMode.NoiseMap)
-            {
-                display.DrawTexture(TextureGenerator.TextureFromHeightMap(noiseMap));
-            }
-            else if (drawMode == DrawMode.ColorMap)
-            {
-                display.DrawTexture(TextureGenerator.TextureFromColorMap(colorMap, mapWidth, mapHeight));
-            }
+            return new MapData(noiseMap, colorMap);
         }
 
         private void OnValidate()
         {
-            if (mapWidth < 1) mapWidth = 1;
-            if (mapHeight < 1) mapHeight = 1;
             if (lacunarity < 1) lacunarity = 1;
             if (octaves < 0) octaves = 0;
+        }
+
+        private struct MapThreadInfo<T>
+        {
+            public readonly Action<T> callback;
+            public readonly T paramater;
+
+            public MapThreadInfo(Action<T> callback, T paramater)
+            {
+                this.callback = callback;
+                this.paramater = paramater;
+            }
         }
     }
 }
