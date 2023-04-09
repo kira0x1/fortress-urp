@@ -33,15 +33,23 @@ namespace Kira
         public int seed;
         public Vector2 offset;
 
+        public bool useFalloff;
+
         public float meshHeightMultiplier = 10f;
         public AnimationCurve meshHeightCurve;
 
         public bool autoUpdate = true;
 
         public TerrainType[] regions;
+        private float[,] falloffMap;
 
         private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
         private Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
+
+        private void Awake()
+        {
+            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize);
+        }
 
         public void DrawMapInEditor()
         {
@@ -98,7 +106,7 @@ namespace Kira
         }
 
         private void MapDataThread(Vector2 center, Action<MapData> callback)
-        { 
+        {
             MapData mapData = GenerateMapData(center);
 
             lock (mapDataThreadInfoQueue)
@@ -138,6 +146,11 @@ namespace Kira
             {
                 for (int x = 0; x < mapChunkSize; x++)
                 {
+                    if (useFalloff)
+                    {
+                        noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffMap[x, y]);
+                    }
+
                     float currentHeight = noiseMap[x, y];
                     for (int i = 0; i < regions.Length; i++)
                     {
@@ -160,6 +173,8 @@ namespace Kira
         {
             if (lacunarity < 1) lacunarity = 1;
             if (octaves < 0) octaves = 0;
+
+            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize);
         }
 
         private struct MapThreadInfo<T>
