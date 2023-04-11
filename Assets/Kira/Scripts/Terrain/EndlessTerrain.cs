@@ -5,7 +5,7 @@ namespace Kira
 {
     public partial class EndlessTerrain : MonoBehaviour
     {
-        private const float scale = 5f;
+        private const float scale = 2f;
 
         private const float viewerMoveThresholdForChunkUpdate = 25f;
         private const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThresholdForChunkUpdate * viewerMoveThresholdForChunkUpdate;
@@ -31,7 +31,7 @@ namespace Kira
             mapGenerator = FindObjectOfType<MapGenerator>();
 
             maxViewDist = detailLevels[^1].visibleDistThreshhold;
-            chunkSize = MapGenerator.mapChunkSize - 1;
+            chunkSize = MapGenerator.MapChunkSize - 1;
             chunkVisibleInViewDist = Mathf.RoundToInt(maxViewDist / chunkSize);
 
             UpdateVisibleChunks();

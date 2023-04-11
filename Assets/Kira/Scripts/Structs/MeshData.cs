@@ -1,12 +1,14 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Kira
 {
     public struct MeshData
     {
-        private readonly Vector3[] vertices;
+        private Vector3[] vertices;
         private readonly int[] triangles;
-        private readonly Vector2[] uvs;
+        private Vector2[] uvs;
+        private Vector3[] bakedNormals;
 
         private Vector3[] borderVertices;
         private int[] borderTriangles;
@@ -14,16 +16,22 @@ namespace Kira
         private int triangleIndex;
         private int borderTriangleIndex;
 
-        public MeshData(int verticesPerLine)
+        private readonly bool useFlatShading;
+
+        public MeshData(int verticesPerLine, bool useFlatShading)
         {
+            this.useFlatShading = useFlatShading;
+
+            uvs = new Vector2[verticesPerLine * verticesPerLine];
             vertices = new Vector3[verticesPerLine * verticesPerLine];
             triangles = new int[(verticesPerLine - 1) * (verticesPerLine - 1) * 6];
             triangleIndex = 0;
-            uvs = new Vector2[verticesPerLine * verticesPerLine];
 
             borderVertices = new Vector3[verticesPerLine * 4 + 4];
             borderTriangles = new int[24 * verticesPerLine];
             borderTriangleIndex = 0;
+
+            bakedNormals = Array.Empty<Vector3>();
         }
 
         public void AddVertex(Vector3 vertexPosition, Vector2 uv, int vertexIndex)
@@ -117,6 +125,39 @@ namespace Kira
             return Vector3.Cross(sideAB, sideAC).normalized;
         }
 
+        private void FlatShading()
+        {
+            Vector3[] flatShadedVertices = new Vector3[triangles.Length];
+            Vector2[] flatShadedUvs = new Vector2[triangles.Length];
+
+            for (var i = 0; i < triangles.Length; i++)
+            {
+                flatShadedVertices[i] = vertices[triangles[i]];
+                flatShadedUvs[i] = uvs[triangles[i]];
+                triangles[i] = i;
+            }
+
+            vertices = flatShadedVertices;
+            uvs = flatShadedUvs;
+        }
+
+        public void ProcessMesh()
+        {
+            if (useFlatShading)
+            {
+                FlatShading();
+            }
+            else
+            {
+                BakeNormals();
+            }
+        }
+
+        private void BakeNormals()
+        {
+            bakedNormals = CalculateNormals();
+        }
+
         public Mesh CreateMesh()
         {
             Mesh mesh = new Mesh();
@@ -124,7 +165,15 @@ namespace Kira
             mesh.vertices = vertices;
             mesh.triangles = triangles;
             mesh.uv = uvs;
-            mesh.normals = CalculateNormals();
+
+            if (useFlatShading)
+            {
+                mesh.RecalculateNormals();
+            }
+            else
+            {
+                mesh.normals = bakedNormals;
+            }
 
             return mesh;
         }

@@ -19,7 +19,7 @@ namespace Kira
 
         public Noise.NormalizeMode normalizeMode;
 
-        public const int mapChunkSize = 239;
+        public bool useFlatShading;
 
         [Range(0, 6)]
         public int editorLevelOfDetail;
@@ -42,13 +42,23 @@ namespace Kira
 
         public TerrainType[] regions;
         private float[,] falloffMap;
+        private static MapGenerator Instance;
 
         private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
         private Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
+        public static int MapChunkSize
+        {
+            get
+            {
+                if (Instance == null) Instance = FindObjectOfType<MapGenerator>();
+                return Instance.useFlatShading ? 95 : 239;
+            }
+        }
+
         private void Awake()
         {
-            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize);
+            falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
         }
 
         public void DrawMapInEditor()
@@ -63,15 +73,15 @@ namespace Kira
             }
             else if (drawMode == DrawMode.ColorMap)
             {
-                display.DrawTexture(TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize));
+                display.DrawTexture(TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
             }
             else if (drawMode == DrawMode.Mesh)
             {
-                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail), TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize));
+                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail, useFlatShading), TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
             }
             else if (drawMode == DrawMode.FalloffMap)
             {
-                display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(mapChunkSize)));
+                display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(MapChunkSize)));
             }
         }
 
@@ -97,7 +107,7 @@ namespace Kira
 
         private void MeshDataThread(MapData mapData, int lod, Action<MeshData> callback)
         {
-            MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, lod);
+            MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, lod, useFlatShading);
 
             lock (meshDataThreadInfoQueue)
             {
@@ -139,13 +149,14 @@ namespace Kira
         private MapData GenerateMapData(Vector2 center)
         {
             // + 2 to compensate for chunk border
-            float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+            float[,] noiseMap = Noise.GenerateNoiseMap(MapChunkSize + 2, MapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
 
-            Color[] colorMap = new Color[mapChunkSize * mapChunkSize];
 
-            for (int y = 0; y < mapChunkSize; y++)
+            Color[] colorMap = new Color[MapChunkSize * MapChunkSize];
+
+            for (int y = 0; y < MapChunkSize; y++)
             {
-                for (int x = 0; x < mapChunkSize; x++)
+                for (int x = 0; x < MapChunkSize; x++)
                 {
                     if (useFalloff)
                     {
@@ -157,7 +168,7 @@ namespace Kira
                     {
                         if (currentHeight >= regions[i].height)
                         {
-                            colorMap[y * mapChunkSize + x] = regions[i].color;
+                            colorMap[y * MapChunkSize + x] = regions[i].color;
                         }
                         else
                         {
@@ -175,7 +186,7 @@ namespace Kira
             if (lacunarity < 1) lacunarity = 1;
             if (octaves < 0) octaves = 0;
 
-            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize);
+            falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
         }
 
         private struct MapThreadInfo<T>

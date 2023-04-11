@@ -5,5 +5,6 @@
     {
         public int lod;
         public float visibleDistThreshhold;
+        public bool useForCollider;
     }
 }

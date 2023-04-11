@@ -1,10 +1,12 @@
 using UnityEngine;
 
+// ReSharper disable Unity.InefficientMultidimensionalArrayUsage
+
 namespace Kira
 {
     public static class MeshGenerator
     {
-        public static MeshData GenerateTerrainMesh(float[,] heightMap, float heightMultiplier, AnimationCurve _heightCurve, int levelOfDetail)
+        public static MeshData GenerateTerrainMesh(float[,] heightMap, float heightMultiplier, AnimationCurve _heightCurve, int levelOfDetail, bool useFlatShading)
         {
             AnimationCurve heightCurve = new AnimationCurve(_heightCurve.keys);
 
@@ -19,7 +21,7 @@ namespace Kira
 
             int verticesPerLine = (meshSize - 1) / meshSimplificationIncrement + 1;
 
-            MeshData meshData = new MeshData(verticesPerLine);
+            MeshData meshData = new MeshData(verticesPerLine, useFlatShading);
 
             int[,] vertexIndicesMap = new int[borderedSize, borderedSize];
             int meshVertexIndex = 0;
@@ -71,6 +73,8 @@ namespace Kira
                     vertexIndex++;
                 }
             }
+
+            meshData.ProcessMesh();
 
             return meshData;
         }

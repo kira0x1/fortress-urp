@@ -16,6 +16,7 @@ namespace Kira
 
             private LODInfo[] detailLevels;
             private LODMesh[] lodMeshes;
+            private LODMesh collisionLODMesh;
 
             private MapData mapData;
             private bool mapDataRecieved;
@@ -46,6 +47,10 @@ namespace Kira
                 for (int i = 0; i < detailLevels.Length; i++)
                 {
                     lodMeshes[i] = new LODMesh(detailLevels[i].lod, UpdateChunk);
+                    if (detailLevels[i].useForCollider)
+                    {
+                        collisionLODMesh = lodMeshes[i];
+                    }
                 }
 
                 mapGenerator.RequestMapData(position, OnMapDataRecieved);
@@ -56,7 +61,7 @@ namespace Kira
                 this.mapData = mapData;
                 mapDataRecieved = true;
 
-                Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, MapGenerator.mapChunkSize, MapGenerator.mapChunkSize);
+                Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, MapGenerator.MapChunkSize, MapGenerator.MapChunkSize);
                 meshRenderer.material.mainTexture = texture;
 
                 UpdateChunk();
@@ -97,6 +102,18 @@ namespace Kira
                         else if (!lodMesh.hasRequestedMesh)
                         {
                             lodMesh.RequestMesh(mapData);
+                        }
+                    }
+
+                    if (lodIndex == 0)
+                    {
+                        if (collisionLODMesh.hasMesh)
+                        {
+                            meshCollider.sharedMesh = collisionLODMesh.mesh;
+                        }
+                        else if (!collisionLODMesh.hasRequestedMesh)
+                        {
+                            collisionLODMesh.RequestMesh(mapData);
                         }
                     }
 
