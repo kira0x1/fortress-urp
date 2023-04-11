@@ -12,6 +12,7 @@ namespace Kira
 
             private MeshRenderer meshRenderer;
             private MeshFilter meshFilter;
+            private MeshCollider meshCollider;
 
             private LODInfo[] detailLevels;
             private LODMesh[] lodMeshes;
@@ -32,6 +33,7 @@ namespace Kira
                 meshObject = new GameObject("Terrain Chunk");
                 meshRenderer = meshObject.AddComponent<MeshRenderer>();
                 meshFilter = meshObject.AddComponent<MeshFilter>();
+                meshCollider = meshObject.AddComponent<MeshCollider>();
                 meshRenderer.material = material;
 
                 meshObject.transform.position = positionV3 * scale;
@@ -90,6 +92,7 @@ namespace Kira
                         {
                             previousLODIndex = lodIndex;
                             meshFilter.mesh = lodMesh.mesh;
+                            meshCollider.sharedMesh = lodMesh.mesh;
                         }
                         else if (!lodMesh.hasRequestedMesh)
                         {

@@ -19,7 +19,7 @@ namespace Kira
 
         public Noise.NormalizeMode normalizeMode;
 
-        public const int mapChunkSize = 241;
+        public const int mapChunkSize = 239;
 
         [Range(0, 6)]
         public int editorLevelOfDetail;
@@ -138,7 +138,8 @@ namespace Kira
 
         private MapData GenerateMapData(Vector2 center)
         {
-            float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize, mapChunkSize, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+            // + 2 to compensate for chunk border
+            float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
 
             Color[] colorMap = new Color[mapChunkSize * mapChunkSize];
 
