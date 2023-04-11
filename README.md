@@ -1,2 +1,3 @@
-# fortress-urp
-Dwarf fortress style game
+# Fortress
+
+A base building economy sim, inspired by dwarf fortress.
