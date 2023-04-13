@@ -37,9 +37,9 @@ namespace Kira
                 meshCollider = meshObject.AddComponent<MeshCollider>();
                 meshRenderer.material = material;
 
-                meshObject.transform.position = positionV3 * scale;
+                meshObject.transform.position = positionV3 * mapGenerator.terrainData.uniformScale;
                 meshObject.transform.SetParent(parent);
-                meshObject.transform.localScale = Vector3.one * scale;
+                meshObject.transform.localScale = Vector3.one * mapGenerator.terrainData.uniformScale;
                 SetVisible(false);
 
                 lodMeshes = new LODMesh[detailLevels.Length];

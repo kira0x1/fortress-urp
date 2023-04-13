@@ -5,8 +5,6 @@ namespace Kira
 {
     public partial class EndlessTerrain : MonoBehaviour
     {
-        private const float scale = 2f;
-
         private const float viewerMoveThresholdForChunkUpdate = 25f;
         private const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThresholdForChunkUpdate * viewerMoveThresholdForChunkUpdate;
 
@@ -39,7 +37,7 @@ namespace Kira
 
         private void Update()
         {
-            viewerPosition = new Vector2(viewer.position.x, viewer.position.z) / scale;
+            viewerPosition = new Vector2(viewer.position.x, viewer.position.z) / mapGenerator.terrainData.uniformScale;
 
             if ((viewerPositionOld - viewerPosition).sqrMagnitude > sqrViewerMoveThresholdForChunkUpdate)
             {
@@ -66,9 +64,9 @@ namespace Kira
                 {
                     Vector2 viewedChunkCoord = new Vector2(curChunkCoordX + xOffset, curChunkCoordY + yOffset);
 
-                    if (terrainChunkDict.ContainsKey(viewedChunkCoord))
+                    if (terrainChunkDict.TryGetValue(viewedChunkCoord, out TerrainChunk chunk))
                     {
-                        terrainChunkDict[viewedChunkCoord].UpdateChunk();
+                        chunk.UpdateChunk();
                     }
                     else
                     {

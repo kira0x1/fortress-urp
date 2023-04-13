@@ -15,29 +15,13 @@ namespace Kira
             FalloffMap
         }
 
+        public TerrainData terrainData;
+        public NoiseData noiseData;
+
         public DrawMode drawMode;
-
-        public Noise.NormalizeMode normalizeMode;
-
-        public bool useFlatShading;
 
         [Range(0, 6)]
         public int editorLevelOfDetail;
-        public float noiseScale = 28;
-        public int octaves = 4;
-
-        [Range(0, 1)]
-        public float persistance = 0.5f;
-        public float lacunarity = 2f;
-
-        public int seed;
-        public Vector2 offset;
-
-        public bool useFalloff;
-
-        public float meshHeightMultiplier = 10f;
-        public AnimationCurve meshHeightCurve;
-
         public bool autoUpdate = true;
 
         public TerrainType[] regions;
@@ -52,13 +36,21 @@ namespace Kira
             get
             {
                 if (Instance == null) Instance = FindObjectOfType<MapGenerator>();
-                return Instance.useFlatShading ? 95 : 239;
+                return Instance.terrainData.useFlatShading ? 95 : 239;
             }
         }
 
         private void Awake()
         {
             falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
+        }
+
+        private void OnValuesUpdated()
+        {
+            if (!Application.isPlaying)
+            {
+                DrawMapInEditor();
+            }
         }
 
         public void DrawMapInEditor()
@@ -77,7 +69,7 @@ namespace Kira
             }
             else if (drawMode == DrawMode.Mesh)
             {
-                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail, useFlatShading), TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
+                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, editorLevelOfDetail, terrainData.useFlatShading), TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
             }
             else if (drawMode == DrawMode.FalloffMap)
             {
@@ -107,7 +99,7 @@ namespace Kira
 
         private void MeshDataThread(MapData mapData, int lod, Action<MeshData> callback)
         {
-            MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, lod, useFlatShading);
+            MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, lod, terrainData.useFlatShading);
 
             lock (meshDataThreadInfoQueue)
             {
@@ -149,7 +141,7 @@ namespace Kira
         private MapData GenerateMapData(Vector2 center)
         {
             // + 2 to compensate for chunk border
-            float[,] noiseMap = Noise.GenerateNoiseMap(MapChunkSize + 2, MapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+            float[,] noiseMap = Noise.GenerateNoiseMap(MapChunkSize + 2, MapChunkSize + 2, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode);
 
 
             Color[] colorMap = new Color[MapChunkSize * MapChunkSize];
@@ -158,7 +150,7 @@ namespace Kira
             {
                 for (int x = 0; x < MapChunkSize; x++)
                 {
-                    if (useFalloff)
+                    if (terrainData.useFalloff)
                     {
                         noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffMap[x, y]);
                     }
@@ -183,8 +175,17 @@ namespace Kira
 
         private void OnValidate()
         {
-            if (lacunarity < 1) lacunarity = 1;
-            if (octaves < 0) octaves = 0;
+            if (terrainData != null)
+            {
+                terrainData.OnValuesUpdated -= OnValuesUpdated;
+                terrainData.OnValuesUpdated += OnValuesUpdated;
+            }
+
+            if (noiseData != null)
+            {
+                noiseData.OnValuesUpdated -= OnValuesUpdated;
+                noiseData.OnValuesUpdated += OnValuesUpdated;
+            }
 
             falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
         }
