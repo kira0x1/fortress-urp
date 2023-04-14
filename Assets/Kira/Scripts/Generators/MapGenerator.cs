@@ -1,6 +1,6 @@
 using System;
-using System.Threading;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace Kira
@@ -10,13 +10,15 @@ namespace Kira
         public enum DrawMode
         {
             NoiseMap,
-            ColorMap,
             Mesh,
             FalloffMap
         }
 
         public TerrainData terrainData;
         public NoiseData noiseData;
+        public TextureData textureData;
+
+        public Material terrainMaterial;
 
         public DrawMode drawMode;
 
@@ -24,25 +26,33 @@ namespace Kira
         public int editorLevelOfDetail;
         public bool autoUpdate = true;
 
-        public TerrainType[] regions;
         private float[,] falloffMap;
-        private static MapGenerator Instance;
 
         private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
         private Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
-        public static int MapChunkSize
-        {
-            get
-            {
-                if (Instance == null) Instance = FindObjectOfType<MapGenerator>();
-                return Instance.terrainData.useFlatShading ? 95 : 239;
-            }
-        }
+        public int mapChunkSize => terrainData.useFlatShading ? 95 : 239;
 
-        private void Awake()
+
+        private void OnValidate()
         {
-            falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
+            if (terrainData != null)
+            {
+                terrainData.OnValuesUpdated -= OnValuesUpdated;
+                terrainData.OnValuesUpdated += OnValuesUpdated;
+            }
+
+            if (noiseData != null)
+            {
+                noiseData.OnValuesUpdated -= OnValuesUpdated;
+                noiseData.OnValuesUpdated += OnValuesUpdated;
+            }
+
+            if (textureData != null)
+            {
+                textureData.OnValuesUpdated -= OnTextureValuesUpdated;
+                textureData.OnValuesUpdated += OnTextureValuesUpdated;
+            }
         }
 
         private void OnValuesUpdated()
@@ -51,6 +61,11 @@ namespace Kira
             {
                 DrawMapInEditor();
             }
+        }
+
+        private void OnTextureValuesUpdated()
+        {
+            textureData.ApplyToMaterial(terrainMaterial);
         }
 
         public void DrawMapInEditor()
@@ -63,17 +78,13 @@ namespace Kira
             {
                 display.DrawTexture(TextureGenerator.TextureFromHeightMap(mapData.heightMap));
             }
-            else if (drawMode == DrawMode.ColorMap)
-            {
-                display.DrawTexture(TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
-            }
             else if (drawMode == DrawMode.Mesh)
             {
-                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, editorLevelOfDetail, terrainData.useFlatShading), TextureGenerator.TextureFromColorMap(mapData.colorMap, MapChunkSize, MapChunkSize));
+                display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, editorLevelOfDetail, terrainData.useFlatShading));
             }
             else if (drawMode == DrawMode.FalloffMap)
             {
-                display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(MapChunkSize)));
+                display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(mapChunkSize)));
             }
         }
 
@@ -141,53 +152,25 @@ namespace Kira
         private MapData GenerateMapData(Vector2 center)
         {
             // + 2 to compensate for chunk border
-            float[,] noiseMap = Noise.GenerateNoiseMap(MapChunkSize + 2, MapChunkSize + 2, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode);
+            float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode);
 
-
-            Color[] colorMap = new Color[MapChunkSize * MapChunkSize];
-
-            for (int y = 0; y < MapChunkSize; y++)
+            if (terrainData.useFalloff)
             {
-                for (int x = 0; x < MapChunkSize; x++)
-                {
-                    if (terrainData.useFalloff)
-                    {
-                        noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffMap[x, y]);
-                    }
+                falloffMap ??= FalloffGenerator.GenerateFalloffMap(mapChunkSize + 2);
 
-                    float currentHeight = noiseMap[x, y];
-                    for (int i = 0; i < regions.Length; i++)
+                for (int y = 0; y < mapChunkSize + 2; y++)
+                {
+                    for (int x = 0; x < mapChunkSize + 2; x++)
                     {
-                        if (currentHeight >= regions[i].height)
+                        if (terrainData.useFalloff)
                         {
-                            colorMap[y * MapChunkSize + x] = regions[i].color;
-                        }
-                        else
-                        {
-                            break;
+                            noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffMap[x, y]);
                         }
                     }
                 }
             }
 
-            return new MapData(noiseMap, colorMap);
-        }
-
-        private void OnValidate()
-        {
-            if (terrainData != null)
-            {
-                terrainData.OnValuesUpdated -= OnValuesUpdated;
-                terrainData.OnValuesUpdated += OnValuesUpdated;
-            }
-
-            if (noiseData != null)
-            {
-                noiseData.OnValuesUpdated -= OnValuesUpdated;
-                noiseData.OnValuesUpdated += OnValuesUpdated;
-            }
-
-            falloffMap = FalloffGenerator.GenerateFalloffMap(MapChunkSize);
+            return new MapData(noiseMap);
         }
 
         private struct MapThreadInfo<T>

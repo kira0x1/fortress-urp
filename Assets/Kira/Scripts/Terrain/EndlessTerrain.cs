@@ -29,7 +29,7 @@ namespace Kira
             mapGenerator = FindObjectOfType<MapGenerator>();
 
             maxViewDist = detailLevels[^1].visibleDistThreshhold;
-            chunkSize = MapGenerator.MapChunkSize - 1;
+            chunkSize = mapGenerator.mapChunkSize - 1;
             chunkVisibleInViewDist = Mathf.RoundToInt(maxViewDist / chunkSize);
 
             UpdateVisibleChunks();

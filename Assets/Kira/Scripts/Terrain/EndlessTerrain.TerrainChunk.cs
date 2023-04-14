@@ -61,9 +61,6 @@ namespace Kira
                 this.mapData = mapData;
                 mapDataRecieved = true;
 
-                Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, MapGenerator.MapChunkSize, MapGenerator.MapChunkSize);
-                meshRenderer.material.mainTexture = texture;
-
                 UpdateChunk();
             }
 

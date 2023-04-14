@@ -5,12 +5,10 @@ namespace Kira
     public struct MapData
     {
         public readonly float[,] heightMap;
-        public readonly Color[] colorMap;
 
-        public MapData(float[,] heightMap, Color[] colorMap)
+        public MapData(float[,] heightMap)
         {
             this.heightMap = heightMap;
-            this.colorMap = colorMap;
         }
     }
 }
