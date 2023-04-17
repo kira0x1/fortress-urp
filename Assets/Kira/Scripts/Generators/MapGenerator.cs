@@ -170,6 +170,8 @@ namespace Kira
                 }
             }
 
+            textureData.UpdateMeshHeight(terrainMaterial, terrainData.MinHeight, terrainData.MaxHeight);
+
             return new MapData(noiseMap);
         }
 
