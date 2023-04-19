@@ -1,10 +1,10 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Kira
+namespace Kira.CustomNoise.Editor
 {
     [CustomEditor(typeof(TextureCreator))]
-    public class TextureCreatorInspector : Editor
+    public class TextureCreatorInspector : UnityEditor.Editor
     {
         private TextureCreator creator;
 
@@ -35,6 +35,11 @@ namespace Kira
             {
                 RefreshCreator();
             }
+
+            // if (GUILayout.Button("Refresh Texture"))
+            // {
+            //     creator.RefreshTexture();
+            // }
         }
     }
 }
